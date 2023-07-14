@@ -1,0 +1,99 @@
+﻿@using FarmStation.Services;
+@using FarmStation.Models;
+@using System.Security.Claims;
+
+@inject FarmerProvider farmerProvider
+@inject NavigationManager navManager
+
+@*
+<style>
+	.mud-table-cell{
+		padding: 6px 6px;
+	}
+</style>*@
+
+@if (farms != null)
+{
+	<MudTable Items="@farms" Class="my-4 cursor-pointer" Dense="true" Hover="true" Striped="true" @bind-SelectedItem="selectedFarm">
+		<HeaderContent>
+			<MudTh>Crypto</MudTh>
+			<MudTh>Status</MudTh>
+			<MudTh>Updated</MudTh>
+			<MudTh>Wallets Crypto</MudTh>
+			<MudTh>Wallets Fiat</MudTh>
+			<MudTh>Effort</MudTh>
+			<MudTh>Longest Resp.</MudTh>
+			<MudTh>Plots</MudTh>
+			<MudTh>Drives</MudTh>			
+		</HeaderContent>
+		<RowTemplate>
+			<MudTd>@context.Crypto</MudTd>
+			<MudTd><MudIconButton Icon="@Icons.Material.Filled.Circle" Color="Color.Success" Class="pa-0 ma-0" Title=@context.Status /></MudTd>
+			@if (context.LastUpdatedMinAgo > 2880)
+			{
+				<MudTd>@($"{(context.LastUpdatedMinAgo / (24 * 60.0)).ToString("0.0")}  days ago") </MudTd>
+			}
+			else if (context.LastUpdatedMinAgo > 180){
+				<MudTd>@($"{(context.LastUpdatedMinAgo / (60.0)).ToString("0.0")} hours ago") </MudTd>
+			}else{
+				<MudTd>@($"{context.LastUpdatedMinAgo} min. ago") </MudTd>
+			}
+			<MudTd>@((context.WalletBalanceCrypto + context.ColdWalletBalanceCrypto).ToString("0.00") + " " + context.Crypto) </MudTd>
+			<MudTd>@((context.WalletBalanceFiat + context.ColdWalletBalanceFiat).ToString("0.00") + " " + context.FiatCurrency)  </MudTd>
+			<MudTd>@( $"{context.EffortPct.ToString("0.00")}%" ) </MudTd>
+			<MudTd>@context.ResponseTimeSecondsMax.ToString("0.00")</MudTd>
+			<MudTd>@context.PlotsCount</MudTd>
+			<MudTd>@context.DrivesCount</MudTd>			
+		</RowTemplate>
+	</MudTable>
+}
+
+@code {
+	private List<FarmViewModel> farms = null!;
+	private FarmViewModel _selectedFarm = null!;
+
+	[Parameter]
+	public bool IsReadyToDisplayData { get; set; } = false;
+
+	[CascadingParameter] protected Task<AuthenticationState> AuthStat { get; set; } = null!; 
+
+	[Parameter]
+	public EventCallback<bool> IsReadyToDisplayDataChanged { get; set; }
+
+
+	private FarmViewModel selectedFarm
+	{
+		get
+		{
+			return _selectedFarm;
+		}
+		set
+		{
+			_selectedFarm = value;
+			if (_selectedFarm != null)
+			{
+				navManager.NavigateTo($"dashboard/{_selectedFarm.Id}");
+			}
+		}
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		await IsReadyToDisplayDataChanged.InvokeAsync(false);
+	}
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			var account = (await AuthStat).User.FindFirst(ClaimTypes.Email);
+			var result = await farmerProvider.GetFarmsDataAsync(account.Value);
+
+			farms = result.OrderBy(f => f.Crypto == "xch" ? "0" : f.Crypto).ToList();
+
+			selectedFarm = null!;
+			StateHasChanged();
+			
+			await IsReadyToDisplayDataChanged.InvokeAsync(true);
+		}
+	}
+}

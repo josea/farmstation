@@ -1,0 +1,22 @@
+version: '3.4'
+
+services:
+  farmstation:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      #- ASPNETCORE_ENVIRONMENT=Development
+      #- ASPNETCORE_URLS=https://+:443;http://+:80
+      - ASPNETCORE_URLS=http://+:80
+      - FarmStation_ConnectionStrings__dbserver=mariadb
+      - FarmStation_ConnectionStrings__dbuser=prod
+    ports:
+      - "80"
+  #    - "443"
+  #  volumes:
+  #    - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+  #    - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+  nginx: 
+    environment: 
+        - FARMSTATION_URL=http://farmstation
+        - DOLLARSYMBOL=$$
+        

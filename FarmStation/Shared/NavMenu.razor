@@ -1,0 +1,37 @@
+﻿@using FarmStationDb.DataLayer;
+@using FarmStation.Models;
+@using FarmStationDb.Models.FarmDataJson;
+
+@inject FarmerRepository service
+
+
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
+    <MudNavLink Href="fetchdata" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Fetch data</MudNavLink>
+    @if (farmers == null)
+    {
+        <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+    }
+    else
+    {
+        @foreach(var farmer in farmers)
+        {
+            <MudNavLink Href="@($"dashboard/{farmer.Id}")" Match="NavLinkMatch.Prefix"
+                Icon="@Icons.Material.Filled.FireTruck">@($"{farmer.Name}: {farmer.Crypto}")</MudNavLink>            
+        }       
+    }
+</MudNavMenu>
+
+@code{
+    private FarmViewModel[]? farmers;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {   
+            //farmers = (await service.GetFarmsDataAsync()).ToArray();            
+           // StateHasChanged(); 
+        }
+    }
+}

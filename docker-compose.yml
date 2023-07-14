@@ -1,0 +1,124 @@
+version: '3.4'
+
+#https://pentacent.medium.com/nginx-and-lets-encrypt-with-docker-in-less-than-5-minutes-b4b8a60d3a71
+services:
+  php: 
+    #image: php:fpm-alpine
+    image: ${DOCKER_REGISTRY-}myphp
+    build:
+      context: php-mysql/
+      dockerfile: Dockerfile    
+    #volumes: 
+    #    - ./data/farmrwww/web:/var/www/html
+    #command:
+    #    - /bin/sh
+    #    - -c
+    #    - |
+    #        docker-php-ext-install mysqli   #mysqli needed by php, consider creating image with that already installed
+    #        php-fpm
+
+
+  mariadb: 
+    image: mariadb:10.6
+    volumes: 
+        #- /mnt/c/scratch/mariadb:/var/lib/mysql
+        - mariadb_volume:/var/lib/mysql
+    environment:
+        - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=true        
+        #- MARIADB_AUTO_UPGRADE=true    
+    command: 
+        - --max_allowed_packet=256M  
+        - --lower_case_table_names=1
+    healthcheck:
+      test: ["CMD-SHELL", "exit | mariadb -h localhost -P 3306 -u root " ]
+      interval: 5s
+      timeout: 20s
+      retries: 30
+
+  farmstation:
+    image: ${DOCKER_REGISTRY-}farmstation
+    build:
+      context: .
+      dockerfile: FarmStation/Dockerfile
+    depends_on:
+        mariadb:    
+            condition: service_healthy
+
+    #healthcheck:
+    #    test: ["CMD", "curl", "-f", "http://localhost"]
+    #    interval: 1m30s
+    #    timeout: 10s
+    #    retries: 3
+
+            
+#https://www.baeldung.com/linux/nginx-config-environment-variables
+  
+  certbot:
+    #image: certbot/certbot
+    image: my-certbot
+    build:
+        context: my-certbot
+        dockerfile: Dockerfile
+
+    volumes:
+        - certbot_conf_volume:/etc/letsencrypt
+        - certbot_www_volume:/var/www/certbot
+        #- ./data/certbot/conf:/etc/letsencrypt
+        #- ./data/certbot/www:/var/www/certbot
+        
+
+    #entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    entrypoint: "/bin/sh -c 'trap exit TERM; /init-and-run.sh;' "
+
+  nginx: 
+    #image: nginx:1.24-alpine
+    image: my-nginx
+    build:
+        context: .
+        dockerfile: my-nginx/Dockerfile
+    ports: 
+        - "80:80"
+        - "443:443"
+    depends_on:
+        mariadb:    
+            condition: service_healthy
+        
+        farmstation:
+            condition: service_healthy
+
+        php:
+            condition: service_started
+
+    volumes: 
+      #  - ./data/nginx:/etc/nginx/conf.d
+      #  - ./data/farmrwww/web:/var/www/html
+        #- ./data/certbot/conf:/etc/letsencrypt
+        #- ./data/certbot/www:/var/www/certbot
+        - certbot_conf_volume:/etc/letsencrypt
+        - certbot_www_volume:/var/www/certbot
+      
+    
+    #command: "/bin/sh -c 'while :; do sleep 6s & wait $${!}; nginx -s reload; echo \"NGINX reloaded\"; done & nginx -g \"daemon off;\"'"
+   # command: 
+   #     - /bin/sh
+   #     - -c
+   #     - |      
+   #         envsubst < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf 
+   #         while :; do sleep 6h & wait $${!}; nginx -s reload; echo 'nginx reloaded'; done &
+   #         nginx -g 'daemon off;' 
+    entrypoint: "/bin/sh -c 'trap exit TERM; /init-and-run.sh;' "
+
+  farmstationbackgroundservice:
+    image: ${DOCKER_REGISTRY-}farmstationbackgroundservice
+    build:
+      context: .
+      dockerfile: farmstationbackgroundservice/Dockerfile
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do sleep 120s  & wait $${!}; dotnet FarmStationBackgroundService.dll; done;'"
+    depends_on:
+        mariadb:    
+            condition: service_healthy
+
+volumes:
+    mariadb_volume:
+    certbot_conf_volume:
+    certbot_www_volume:

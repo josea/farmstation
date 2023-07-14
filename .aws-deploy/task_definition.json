@@ -1,0 +1,340 @@
+{
+    "family": "FarmStation",
+    "containerDefinitions": [
+      {
+        "name": "my-certbot",
+        "image": "my-certbot:production",
+        "cpu": 0,
+        "portMappings": [],
+        "essential": true,
+        "entryPoint": [
+          "sh",
+          "-c"
+        ],
+        "command": [
+          "/init-and-run.sh"
+        ],
+        "environment": [],
+        "mountPoints": [
+          {
+            "sourceVolume": "certbot_conf_volume",
+            "containerPath": "/etc/letsencrypt",
+            "readOnly": false
+          },
+          {
+            "sourceVolume": "certbot_www_volume",
+            "containerPath": "/var/www/certbot",
+            "readOnly": false
+          }
+        ],
+        "volumesFrom": [],
+        "hostname": "certbot",
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-create-group": "true",
+            "awslogs-group": "/ecs/",
+            "awslogs-region": "us-east-2",
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
+      },
+        {
+            "name": "my-nginx",
+            "image": "my-nginx:production",
+            "cpu": 0,
+            "links": [
+                "farmstation",
+                "php"
+            ],
+            "portMappings": [
+                {
+                    "name": "my-nginx-80-tcp",
+                    "containerPort": 80,
+                    "hostPort": 80,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                },
+                {
+                    "name": "my-nginx-443-tcp",
+                    "containerPort": 443,
+                    "hostPort": 443,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                }
+            ],
+            "essential": true,
+            "entryPoint": [
+                "sh",
+                "-c"
+            ],
+            "command": [
+                "/init-and-run.sh"
+            ],
+            "environment": [
+                {
+                    "name": "DOLLARSYMBOL",
+                    "value": "$"
+                },
+                {
+                    "name": "FARMSTATION_URL",
+                    "value": "http://farmstation"
+                }
+            ],
+            "mountPoints": [
+                {
+                    "sourceVolume": "certbot_conf_volume",
+                    "containerPath": "/etc/letsencrypt",
+                    "readOnly": false
+                },
+                {
+                    "sourceVolume": "certbot_www_volume",
+                    "containerPath": "/var/www/certbot",
+                    "readOnly": false
+                }
+            ],
+            "volumesFrom": [],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "/ecs/",
+                    "awslogs-region": "us-east-2",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        },
+      {
+        "name": "farmstation",
+        "image": "farmstation:production",
+        "cpu": 0,
+        "links": [
+          "mariadb"
+        ],
+        "portMappings": [],
+        "essential": true,
+        "secrets": [
+          {
+            "name": "FarmStation_Google__ClientId",
+            "valueFrom": "FarmStation_Google__ClientId"
+          },
+          {
+            "name": "FarmStation_Google__ClientSecret",
+            "valueFrom": "FarmStation_Google__ClientSecret"
+          }
+        ],
+        "environment": [          
+          {
+            "name": "ASPNETCORE_ENVIRONMENT",
+            "value": "Production"
+          },
+          {
+            "name": "ASPNETCORE_URLS",
+            "value": "http://+:80"
+          },
+          {
+            "name": "FarmStation_ConnectionStrings__dbpassword",
+            "value": "root"
+          },
+          {
+            "name": "FarmStation_ConnectionStrings__dbserver",
+            "value": "mariadb"
+          },
+          {
+            "name": "FarmStation_ConnectionStrings__dbuser",
+            "value": "root"
+          }
+        ],
+        "mountPoints": [],
+        "volumesFrom": [],
+        "dependsOn": [
+          {
+            "containerName": "mariadb",
+            "condition": "HEALTHY"
+          }
+        ],
+        "hostname": "farmstation",
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-create-group": "true",
+            "awslogs-group": "/ecs/",
+            "awslogs-region": "us-east-2",
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
+      },
+        {
+            "name": "mariadb",
+            "image": "public.ecr.aws/docker/library/mariadb:10.6",
+            "cpu": 0,
+            "portMappings": [],
+            "essential": true,
+            "command": [
+                "--max_allowed_packet=256M",
+                "--lower_case_table_names=1",
+                "--innodb-buffer-pool-size=8M"
+            ],
+            "environment": [
+                {
+                    "name": "MYSQL_ROOT_HOST",
+                    "value": "%"
+                },
+                {
+                    "name": "MYSQL_ROOT_PASSWORD",
+                    "value": "root"
+                }
+            ],
+            "mountPoints": [
+                {
+                    "sourceVolume": "mariadb_volume",
+                    "containerPath": "/var/lib/mysql",
+                    "readOnly": false
+                }
+            ],
+            "volumesFrom": [],
+            "hostname": "mariadb",
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "/ecs/",
+                    "awslogs-region": "us-east-2",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "exit | mariadb -h localhost -P 3306 -u root -proot"
+                ],
+                "interval": 5,
+                "timeout": 20,
+                "retries": 10
+            }
+        },
+        {
+            "name": "php",
+            "image": "myphp:production",
+            "cpu": 0,
+            "links": [
+                "mariadb"
+            ],
+            "portMappings": [],
+            "essential": true,
+            "environment": [],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "hostname": "php",
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "/ecs/",
+                    "awslogs-region": "us-east-2",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        },
+        {
+            "name": "farmstationbackgroundservice",
+            "image": "farmstationbackgroundservice:production",
+            "cpu": 0,
+            "links": [
+                "mariadb"
+            ],
+            "portMappings": [],
+            "essential": true,
+            "entryPoint": [
+                "sh",
+                "-c"
+            ],
+          "command": [
+            "trap exit TERM; while :; do sleep 120s  & wait ${!}; dotnet FarmStationBackgroundService.dll; done;"
+          ],
+          "secrets": [
+            {
+              "name": "FarmStation_Email__user",
+              "valueFrom": "FarmStation_Email__user"
+            },
+            {
+              "name": "FarmStation_Email__pwd",
+              "valueFrom": "FarmStation_Email__pwd"
+            }
+          ], 
+            "environment": [
+                {
+                    "name": "FarmStation_ConnectionStrings__dbpassword",
+                    "value": "root"
+                },
+                {
+                    "name": "FarmStation_ConnectionStrings__dbserver",
+                    "value": "mariadb"
+                },
+                {
+                    "name": "ASPNETCORE_ENVIRONMENT",
+                    "value": "Production"
+                },
+                {
+                    "name": "FarmStation_ConnectionStrings__dbuser",
+                    "value": "root"
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "dependsOn": [
+                {
+                    "containerName": "mariadb",
+                    "condition": "HEALTHY"
+                }
+            ],
+            "hostname": "farmstationbackgroundservice",
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "/ecs/",
+                    "awslogs-region": "us-east-2",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ],
+    "executionRoleArn": "ecsTaskExecutionRole",
+    "networkMode": "bridge",
+    "volumes": [
+        {
+            "name": "certbot_conf_volume",
+            "dockerVolumeConfiguration": {
+                "scope": "shared",
+                "autoprovision": true,
+                "driver": "local"
+            }
+        },
+        {
+            "name": "certbot_www_volume",
+            "dockerVolumeConfiguration": {
+                "scope": "shared",
+                "autoprovision": true,
+                "driver": "local"
+            }
+        },
+        {
+            "name": "mariadb_volume",
+            "dockerVolumeConfiguration": {
+                "scope": "shared",
+                "autoprovision": true,
+                "driver": "local"
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "cpu": "512",
+    "memory": "600",
+    "runtimePlatform": {
+        "cpuArchitecture": "X86_64",
+        "operatingSystemFamily": "LINUX"
+    }
+}

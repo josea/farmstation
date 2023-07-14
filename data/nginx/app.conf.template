@@ -1,0 +1,80 @@
+server {
+    listen 80;
+    server_name farmstation.zapto.org;
+    location / {
+        return 301 https://${DOLLARSYMBOL}host${DOLLARSYMBOL}request_uri;
+      #  return 301 http://www.google.com;
+    }    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+}
+
+#http{
+ #map ${DOLLARSYMBOL}http_connection ${DOLLARSYMBOL}connection_upgrade {
+ #   "~*Upgrade" ${DOLLARSYMBOL}http_connection;
+ #   default keep-alive;
+ # }
+server {
+    listen 443 ssl;
+    server_name farmstation.zapto.org;
+
+    client_max_body_size 100M;
+    
+    # needed for the php forwarding
+    root /var/www/html;
+
+    # https://learn.microsoft.com/en-us/aspnet/core/blazor/host-and-deploy/server?view=aspnetcore-7.0#linux-with-nginx
+    # https://learn.microsoft.com/en-us/aspnet/core/signalr/scale?view=aspnetcore-7.0#linux-with-nginx
+    location / {
+        proxy_pass $FARMSTATION_URL; 
+        proxy_set_header   Host ${DOLLARSYMBOL}host;
+        proxy_set_header   X-Forwarded-For ${DOLLARSYMBOL}proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto ${DOLLARSYMBOL}scheme;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade ${DOLLARSYMBOL}http_upgrade;
+        proxy_set_header   Connection ${DOLLARSYMBOL}connection_upgrade;
+        proxy_cache_bypass ${DOLLARSYMBOL}http_upgrade;
+        proxy_cache off;
+        proxy_set_header   Connection keep-alive;
+        proxy_read_timeout 100s;
+    }
+
+    # configure php forwarding
+    location ~ \.php${DOLLARSYMBOL} {
+        include fastcgi_params;
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME ${DOLLARSYMBOL}document_root/${DOLLARSYMBOL}fastcgi_script_name;
+    }
+
+    #https://learn.microsoft.com/en-us/aspnet/core/signalr/scale?view=aspnetcore-7.0#linux-with-nginx
+     # Configure the SignalR Endpoint
+    location /hubroute {
+      # App server url
+      proxy_pass $FARMSTATION_URL;
+
+      # Configuration for WebSockets
+      proxy_set_header Upgrade ${DOLLARSYMBOL}http_upgrade;
+      proxy_set_header Connection ${DOLLARSYMBOL}connection_upgrade;
+      proxy_cache off;
+      # WebSockets were implemented after http/1.0
+      proxy_http_version 1.1;
+
+      # Configuration for ServerSentEvents
+      proxy_buffering off;
+
+      # Configuration for LongPolling or if your KeepAliveInterval is longer than 60 seconds
+      proxy_read_timeout 100s;
+
+      proxy_set_header Host ${DOLLARSYMBOL}host;
+      proxy_set_header X-Forwarded-For ${DOLLARSYMBOL}proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto ${DOLLARSYMBOL}scheme;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/farmstation.zapto.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/farmstation.zapto.org/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+#}

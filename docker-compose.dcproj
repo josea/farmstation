@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
+  <PropertyGroup Label="Globals">
+    <ProjectVersion>2.1</ProjectVersion>
+    <DockerTargetOS>Linux</DockerTargetOS>
+    <ProjectGuid>709f9631-ade4-4f04-8f70-9b38847bfb66</ProjectGuid>
+    <DockerLaunchAction>LaunchBrowser</DockerLaunchAction>
+    <DockerServiceUrl>{Scheme}://localhost:{ServicePort}</DockerServiceUrl>
+    <DockerServiceName>farmstation</DockerServiceName>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="docker-compose.override.yml">
+      <DependentUpon>docker-compose.yml</DependentUpon>
+    </None>
+    <None Include="docker-compose.yml" />
+    <None Include=".dockerignore" />
+    <None Include="my-certbot\Dockerfile" />
+    <None Include="my-nginx\Dockerfile" />
+    <None Include="php-mysql\Dockerfile" />
+    <None Include="php-mysql\html\configGetter.php" />
+    <None Include="php-mysql\html\cron.php" />
+    <None Include="php-mysql\html\db.php" />
+    <None Include="php-mysql\html\login-discord.php" />
+    <None Include="php-mysql\html\login.php" />
+    <None Include="php-mysql\html\read.php" />
+    <None Include="php-mysql\html\send12.php" />
+  </ItemGroup>
+</Project>

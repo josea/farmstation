@@ -1,0 +1,27 @@
+﻿@page "/"
+@namespace FarmStation.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+	Layout = "_Layout";
+}
+
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+
+
+@{
+	var initialTokenState = new Services.InitialApplicationState
+	{
+		XsrfToken = Xsrf.GetAndStoreTokens(HttpContext).RequestToken
+	};
+}
+
+<component type="typeof(App)" render-mode="ServerPrerendered"
+		   param-InitialState="initialTokenState" />
+@*<component type="typeof(App)" render-mode="Server" />*@
+
+<script>
+	function GetTimezoneValue() {
+		// Returns the time difference in minutes between UTC time and local time.
+		return new Date().getTimezoneOffset();
+	}
+</script>

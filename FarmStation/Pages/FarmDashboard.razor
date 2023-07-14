@@ -1,0 +1,142 @@
+﻿@page "/dashboard/{farmId}"
+@attribute [Authorize]
+
+@using FarmStation.Services;
+@using FarmStation.Models;
+@using System.Security.Claims;
+
+@inject FarmerProvider farmerProvider
+@inject IJSRuntime JsRuntime
+
+@if (farm == null)
+{
+	<MudProgressCircular Color="Color.Default" Indeterminate="true" />
+}
+else
+{
+	<MudContainer Class="mt-0 pt-0" MaxWidth="MaxWidth.False">
+		<MudGrid Spacing="1" Class=" justify-xs-center">
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) =>  "Status")"
+						MainTextFunc="@((data) => data.Status )"
+						SubtitleFunc="@((data)=> data.LastUpdatedMinAgo <60 ?
+							data.LastUpdatedMinAgo.ToString("0") + " min. ago"
+							: data.LastUpdated.Add(userTime).ToString("yyyy-MM-dd HH:mm") )"
+						ShowStatus="true" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) =>  "Farmed Balance")"
+						MainTextFunc="@((data) => data.FarmedBalanceCrypto.ToString("0.00") )"
+						MainTextSuffixFunc="@((data) => data.Crypto)"
+						SubtitleFunc="@((data)=> data.FarmedBalanceFiat.ToString("0.00") + " " + data.FiatCurrency )" />
+			</MudItem>
+			@if (farm.HasColdWallet)
+			{
+				<MudItem xs="2" Style="min-width:200px;">
+					<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) =>  "Cold Wallet Balance")"
+						MainTextFunc="@((data) => data.ColdWalletBalanceCrypto.ToString("0.00") )"
+						MainTextSuffixFunc="@((data) => data.Crypto)"
+						SubtitleFunc="@((data)=> data.ColdWalletBalanceFiat.ToString("0.00") + " " + data.FiatCurrency )" />
+				</MudItem>
+			}
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Wallet Balance")"
+						MainTextFunc="@((data) => data.WalletBalanceCrypto.ToString("0.00") )"
+						MainTextSuffixFunc="@((data) => data.Crypto)"
+						SubtitleFunc="@((data)=> $"{data.WalletBalanceFiat.ToString("0.00")} {data.FiatCurrency}")" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Number of Plots")"
+						MainTextFunc="@((data) => data.PlotsCount.ToString("#") )"
+						MainTextSuffixFunc="@((data) => "plots")"
+						SubtitleFunc="@((data)=> $"farmed for {data.FarmingSinceDaysAgo.ToString("0")} days")" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Drives")"
+						MainTextFunc="@((data) => data.DrivesCount.ToString("#") )"
+						MainTextSuffixFunc="@((data) => " drives")"
+						SubtitleFunc="@((data) => "total of " + data.TotalDriveSpaceTiB.ToString("#.##") + " TiB" )" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Longest Response")"
+						MainTextFunc="@((data) => data.ResponseTimeSecondsMax.ToString("#.#") )"
+						MainTextSuffixFunc="@((data) => " seconds")"
+						SubtitleFunc="@((data) => data.ResponseTimeSecondsMedian.ToString("0.###") + "s median" )" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Missed Challenges")"
+						MainTextFunc="@((data) => data.MissedChallenges.ToString("0") )"
+						MainTextSuffixFunc="@((data) => " challenges")"
+						SubtitleFunc="@((data) => string.Empty )" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Expected Time to Win")"
+						MainTextFunc="@((data) => data.ETWdays >= 2
+								? data.ETWdays.ToString("0.0")
+								: (data.ETWdays* 24).ToString("0.0") )"
+						MainTextSuffixFunc="@((data) => data.ETWdays >= 2 ? " days" : " hours" )"
+						SubtitleFunc="@((data) => data.DaysSinceLastBlock >= 2
+								? $"won {data.DaysSinceLastBlock.ToString("0.0")} days ago"
+								: $"won {(data.DaysSinceLastBlock *24).ToString("0.0")} hours ago"
+								)" />
+			</MudItem>
+			<MudItem xs="2" Style="min-width:200px;">
+				<StatWidget Tdata=FarmViewModel
+						DataObject="farm"
+						TitleFunc="@((data) => "Effort")"
+						MainTextFunc="@((data) => data.EffortPct.ToString("0.00") )"
+						MainTextSuffixFunc="@((data) => "%" )"
+						SubtitleFunc="@((data) => "" )" />
+			</MudItem>
+		</MudGrid>
+	</MudContainer>
+}
+
+@code {
+	[Parameter]
+	public string farmId { get; set; } = null!;
+	[CascadingParameter] protected Task<AuthenticationState> AuthStat { get; set; } = null!;
+
+	private FarmViewModel? farm;
+	private TimeSpan userTime = new TimeSpan();
+
+	private async Task ReloadDataAsync()
+	{
+		var account = (await AuthStat).User.FindFirst(ClaimTypes.Email);
+		farm = await farmerProvider.GetFarmDataAsync(farmId, account.Value);
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{			
+			// https://www.syncfusion.com/faq/blazor/javascript-interop/how-do-you-convert-the-date-and-time-to-a-clients-or-users-time-zone-in-blazor-server#:~:text=To%20convert%20the%20date%20and,the%20current%20offset%20time%20difference.
+			int timeDiffer = await JsRuntime.InvokeAsync<int>("GetTimezoneValue");
+			userTime = TimeSpan.FromMinutes(-timeDiffer);
+		}
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		farm = null;
+		await ReloadDataAsync();
+	}
+}

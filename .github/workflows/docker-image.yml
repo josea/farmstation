@@ -1,0 +1,111 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3    
+    - uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
+        aws-region: us-east-2
+    - id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+      
+    - name: Build the Docker image (farmstation)
+      env: 
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: farmstation   
+        IMAGE_TAG: production
+        # export IMAGE_TAG=$(date +%s)
+      run: |        
+        docker build . --file FarmStation/Dockerfile --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Build the Docker image (myphp)
+      env: 
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: myphp
+        IMAGE_TAG: production
+        # export IMAGE_TAG=$(date +%s)
+      run: |        
+        docker build php-mysql --file php-mysql/Dockerfile --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Build the Docker image (my-certbot)
+      env: 
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: my-certbot
+        IMAGE_TAG: production
+        # export IMAGE_TAG=$(date +%s)
+      run: |        
+        docker build my-certbot --file my-certbot/Dockerfile --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Build the Docker image (my-nginx)
+      env: 
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: my-nginx
+        IMAGE_TAG: production
+        # export IMAGE_TAG=$(date +%s)
+      run: |        
+        docker build . --file my-nginx/Dockerfile --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Build the Docker image (farmstationbackgroundservice)
+      env: 
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: farmstationbackgroundservice
+        IMAGE_TAG: production
+        # export IMAGE_TAG=$(date +%s)
+      run: |        
+        docker build . --file FarmStationBackgroundService/Dockerfile --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def1
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: .aws-deploy/task_definition.json
+        container-name: my-certbot
+        image: ${{ steps.login-ecr.outputs.registry }}/my-certbot:production
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def2
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def1.outputs.task-definition }}
+        container-name: my-nginx
+        image: ${{ steps.login-ecr.outputs.registry }}/my-nginx:production
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def3
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def2.outputs.task-definition }}
+        container-name: farmstation
+        image: ${{ steps.login-ecr.outputs.registry }}/farmstation:production      
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def4
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def3.outputs.task-definition }}
+        container-name: php
+        image: ${{ steps.login-ecr.outputs.registry }}/myphp:production                
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def5
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def4.outputs.task-definition }}
+        container-name: farmstationbackgroundservice
+        image: ${{ steps.login-ecr.outputs.registry }}/farmstationbackgroundservice:production                
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def5.outputs.task-definition }}
+        service: FarmStation-Service
+        cluster: FarmStation
+        wait-for-service-stability: true

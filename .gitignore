@@ -1,0 +1,9 @@
+.vs/
+bin/
+FarmStation/obj/FarmrMudBlazor.csproj.nuget.dgspec.json
+obj/
+*.user
+data/certbot/conf/options-ssl-nginx.conf
+data/certbot/
+data/nginx/app.conf
+data/certbot.bak/

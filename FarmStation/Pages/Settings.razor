@@ -1,0 +1,44 @@
+﻿@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-3 mb-n1" />
+            FarmerStation Settings
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+
+        <MudTextField Value="@coldWalletAddress" Label="Cold Wallet Address" ReadOnly="false" />
+        <MudSelect T="string" Label="Fiat Currency" SelectedValues="@(new[] {"CAD"})" >
+            <MudSelectItem T="string" Value="@("CAD")" />
+            <MudSelectItem T="string" Value="@("USD (not supported)")" Disabled="true" />
+        </MudSelect>        
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    string coldWalletAddress { get; set; }
+
+
+    void Submit() {
+        MudDialog.Close(DialogResult.Ok(true));
+        Snackbar.Add("Settings saved", Severity.Success
+        //,        
+        //(options) =>
+        //{
+        //    options.SuccessIcon = Icons.Material.Filled.Alarm;
+        //    options.BackgroundBlurred = true;
+        //    options.ShowCloseIcon = true;
+        //}
+        );
+    }
+    void Cancel() => MudDialog.Cancel();
+
+}

@@ -1,0 +1,48 @@
+﻿@typeparam Tdata
+
+<MudCard Elevation="2" Class="pa-2" Style="height:150px;">
+	@if (ShowStatus)
+	{
+		<MudCardHeader Class="pt-2">
+			<CardHeaderContent>
+				<MudText Typo="Typo.body2" Color="Color.Surface">@TitleFunc(DataObject)</MudText>
+			</CardHeaderContent>
+			<CardHeaderActions>
+				<MudIconButton Icon="@Icons.Material.Filled.Circle" Color="Color.Success" Class="pa-0 ma-0" />
+			</CardHeaderActions>
+		</MudCardHeader>
+	}
+	else
+	{
+		<MudCardHeader Class="pt-2">
+			<CardHeaderContent>
+				<MudText Typo="Typo.body2" Color="Color.Surface">@TitleFunc(DataObject)</MudText>
+			</CardHeaderContent>			
+		</MudCardHeader>
+	}
+	<MudCardContent Class="pt-0">
+		<MudText Typo="Typo.h4" Style="display:contents;color: white;">@MainTextFunc(DataObject)</MudText>
+		<MudText Typo="Typo.body1" Style="display:contents;">@MainTextSuffixFunc(DataObject)</MudText>
+		<MudText Typo="Typo.body2">@SubtitleFunc(DataObject)</MudText>
+	</MudCardContent>
+</MudCard>
+
+
+@code {
+	[Parameter]
+	public Func<Tdata, string> TitleFunc { get; set; } = (data) => string.Empty;
+
+	[Parameter]
+	public Func<Tdata, string> MainTextFunc { get; set; } = (data) => string.Empty;
+
+	[Parameter]
+	public Func<Tdata, string> MainTextSuffixFunc { get; set; } = (data) => string.Empty;
+	[Parameter]
+	public Func<Tdata, string> SubtitleFunc { get; set; } = (data) => string.Empty;
+
+	[Parameter]
+	public Tdata DataObject { get; set; } = default(Tdata)!;
+
+	[Parameter]
+	public bool ShowStatus { get; set; } = false;
+}

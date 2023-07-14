@@ -1,0 +1,181 @@
+﻿@inherits LayoutComponentBase
+
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@implements IDisposable
+
+@*https://stackoverflow.com/questions/3508605/how-can-i-transition-height-0-to-height-auto-using-css*@
+<style>
+	.my-style {
+		color: red;
+		background-color: yellow;
+	}
+
+	.collapsible-wrapper {
+		display: flex;
+		overflow: hidden;
+	}
+
+		.collapsible-wrapper:after {
+			content: '';
+			height: 50px;
+			transition: height 0.3s linear, max-height 0s 0.3s linear;
+			max-height: 0px;
+		}
+
+	.collapsible {
+		transition: margin-bottom 0.3s cubic-bezier(0, 0, 0, 1);
+		margin-bottom: 0;
+		max-height: 1000000px;
+	}
+
+	.collapsible-wrapper.collapsed > .collapsible {
+		margin-bottom: -2000px;
+		transition: margin-bottom 0.3s cubic-bezier(1, 0, 1, 1), visibility 0s 0.3s, max-height 0s 0.3s;
+		visibility: hidden;
+		max-height: 0;
+	}
+
+	.collapsible-wrapper.collapsed:after {
+		height: 0;
+		transition: height 0.3s linear;
+		max-height: 50px;
+	}
+
+</style>
+
+
+<MudThemeProvider IsDarkMode=true />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout Style="user-select:none">
+	<MudAppBar Elevation="0">
+		@*<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+		OnClick="@((e) => DrawerToggle())" />*@
+		<MudText Typo="Typo.h6">FarmStation!</MudText>
+		<MudSpacer />
+		<LoginControl />
+		@if (_isReadyToDisplay)
+		{
+			<MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Inherit" OnClick="(e) => Refresh()" />
+			<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+					   OnClick="@(async (e) => await PanelToggleAsync())" />
+			<MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="@(async (e) => await ShowSettings())"/>
+		}
+		else
+		{
+			<AuthorizeView>
+				<Authorized>
+					<MudProgressCircular Color="Color.Default" Indeterminate="true" />
+				</Authorized>
+			</AuthorizeView>
+
+		}
+
+	</MudAppBar>
+
+	@*
+	<MudDrawer @bind-Open="_drawerOpen" Elevation="1">
+	<MudDrawerHeader>
+	<MudText Typo="Typo.h6">Farmr2 Mud</MudText>
+	</MudDrawerHeader>
+	<NavMenu />
+	</MudDrawer>*@
+
+
+	<MudMainContent>
+
+		<AuthorizeView>
+			<Authorized>
+				<MudContainer MaxWidth="MaxWidth.Large" Class="@("collapsible-wrapper" + ( _panelOpen  && _isReadyToDisplay ? "": " collapsed"))">
+					<MudContainer MaxWidth="MaxWidth.Large" Class="collapsible">
+						<FarmStation.Pages.OverviewPanel @bind-IsReadyToDisplayData="_isReadyToDisplay"></FarmStation.Pages.OverviewPanel>
+					</MudContainer>
+				</MudContainer>
+			</Authorized>
+		</AuthorizeView>
+		<MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-0">
+			@Body
+		</MudContainer>
+
+	</MudMainContent>
+
+</MudLayout>
+
+@code {
+	//bool _drawerOpen = false;
+	bool _panelOpen = false;
+	bool _isReadyToDisplay = false;
+	Timer _autoRefreshTimer = null!;
+	[CascadingParameter] protected Task<AuthenticationState> AuthStat { get; set; }
+
+	private async Task PanelToggleAsync()
+	{
+		_panelOpen = !_panelOpen;
+		await localStorage.SetItemAsync<bool>("panelOpen", _panelOpen);
+	}
+
+	private bool ForceOpenPanel => NavigationManager.ToBaseRelativePath(NavigationManager.Uri) == "";
+
+
+	private void Refresh()
+	{
+		NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+	}
+
+
+	protected async override Task OnInitializedAsync()
+	{
+	//https://stackoverflow.com/questions/60840986/blazor-redirect-to-login-if-user-is-not-authenticated
+
+		base.OnInitialized();
+		var user = (await AuthStat).User;
+		var uri = "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+		if (!user.Identity.IsAuthenticated && uri != "/")
+		{
+		//NavigationManager.NavigateTo($"Identity/Login?returnUrl={Uri.EscapeDataString(NavigationManager.Uri)}");
+			NavigationManager.NavigateTo($"Identity/Login?returnUrl={Uri.EscapeDataString(uri)}");
+		}
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			if (await localStorage.ContainKeyAsync("panelOpen") && !ForceOpenPanel)
+			{
+				_panelOpen = await localStorage.GetItemAsync<bool>("panelOpen");				
+			}
+			else
+			{
+				_panelOpen = true;
+				await localStorage.SetItemAsync<bool>("panelOpen", true);
+			}
+			_autoRefreshTimer = new Timer((_) =>
+			{
+				Refresh();
+			}, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+		}
+	}
+
+	async Task ShowSettings()
+	{
+		var dialog = await DialogService.ShowAsync<Pages.Settings>();
+
+
+    }
+
+	void IDisposable.Dispose()
+	{
+		_autoRefreshTimer?.Dispose();
+	}
+
+
+	//void DrawerToggle()
+	//{
+	//    _drawerOpen = !_drawerOpen;
+
+	//}
+}
