@@ -173,7 +173,7 @@
             "command": [
                 "--max_allowed_packet=256M",
                 "--lower_case_table_names=1",
-                "--innodb-buffer-pool-size=8M"
+                "--innodb-buffer-pool-size=128M"
             ],
             "environment": [
                 {
@@ -331,8 +331,8 @@
     "requiresCompatibilities": [
         "EC2"
     ],
-    "cpu": "512",
-    "memory": "600",
+    "cpu": "900",
+    "memory": "800",
     "runtimePlatform": {
         "cpuArchitecture": "X86_64",
         "operatingSystemFamily": "LINUX"
