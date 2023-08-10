@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "FarmStationBackgroundService": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

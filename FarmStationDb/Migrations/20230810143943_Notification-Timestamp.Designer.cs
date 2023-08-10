@@ -3,6 +3,7 @@ using System;
 using FarmStationDb.DataLayer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FarmStationDb.Migrations
 {
     [DbContext(typeof(FarmrContext))]
-    partial class FarmrContextModelSnapshot : ModelSnapshot
+    [Migration("20230810143943_Notification-Timestamp")]
+    partial class NotificationTimestamp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

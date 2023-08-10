@@ -73,7 +73,11 @@ public partial class FarmrContext : DbContext
 
 		modelBuilder.Entity<Farm>()
 			.Property(f => f.PublicApi)
-			.HasDefaultValue(false); 
+			.HasDefaultValue(false);
+
+		modelBuilder.Entity<Notification>()
+			.Property(f => f.TimeStamp)
+			.HasDefaultValueSql("now()");
 
 		base.OnModelCreating(modelBuilder);	
 	}

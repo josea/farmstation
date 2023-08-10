@@ -1,5 +1,6 @@
 ﻿using FarmStation.Models.Db;
 using FarmStationDb;
+using FarmStationDb.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,30 +28,95 @@ public class NotificationSender
     {
         var tasks = new List<Task>();
         var notifications = await _notificationRepository.GetNotificationsAsync();
-
+      
         // https://stackoverflow.com/questions/12337671/using-async-await-for-multiple-tasks
         //await Parallel.ForEachAsync(notifications,
         //    async (notification, token) => 
-        // Not done in parallel because Google shutdown's the service (spam).
-        if (notifications.Count == 0) Console.WriteLine("No notifications to send!");
+        // Not done in parallel because Google shutdown's the service (spam).        
 
-
-        foreach (var notification in notifications) 
+        var sentNotifications = false;
+        // loop for individual notifications. 
+        foreach (var notification in notifications.Where( n => n.Type != "block" || n.Name?.ToLower() == "xch") )
         {
             await SendNotificationAsync(notification);
             await Task.Delay(2000); // avoding getting blocked
             await _notificationRepository.RemoveNotification(notification);
-        }
-    }
+			sentNotifications = true; 
+		}
+
+		var cutoffCooldownBlockNotifications = DateTime.UtcNow.AddDays(-1); // groups block notifications for minor currencies by 24 hours
+
+        var gNotifications = notifications
+           .Where(n => n.Type == "block" && n.Name?.ToLower() != "xch")
+           .GroupBy(n => new { n.User, n.Type, n.Name })
+           .Select(p => new GroupedNotification
+           {
+               User = p.Key.User!,
+               Type = p.Key.Type!,
+               Name = p.Key.Name!,
+               MinTimeStamp = p.Min(groupnotification => groupnotification.TimeStamp),
+               Count = p.Count()
+           }
+           );
+
+        foreach (var gNotification in gNotifications.Where(gn => gn.MinTimeStamp < cutoffCooldownBlockNotifications))
+        {
+			await SendGroupNotificationAsync(gNotification);
+			await Task.Delay(2000); // avoding getting blocked
+
+            notifications
+                .Where( n=> n.User == gNotification.User && n.Type == gNotification.Type && n.Name == gNotification.Name)
+                .ToList()
+                .ForEach( async notification =>await _notificationRepository.RemoveNotification(notification));
+			sentNotifications = true;
+		}
+
+        var countNotificationsCoolingDown = gNotifications.Where(gn => !(gn.MinTimeStamp < cutoffCooldownBlockNotifications)).Sum(gn => gn.Count);
+
+        if (countNotificationsCoolingDown > 0)
+		{
+			Console.WriteLine($"{countNotificationsCoolingDown} notifications cooling down - not sent.");
+		}
+
+		if (!sentNotifications) {
+            if(notifications.Count == 0) Console.WriteLine("No notifications found. No notifications to send!");
+            else Console.WriteLine("No notifications to send!");
+		}
+	}
+
+    private async Task SendGroupNotificationAsync(GroupedNotification notification)
+    {
+        SmtpClient smtpClient = GetSmtpClient();
+        string subject, message;
+
+        switch (notification.Type)
+        {
+            case "block":
+                var plural = notification.Count > 1 ? "s" : "";
+                subject = $"{notification.Name} found {notification.Count} block{plural}!";
+                message = $"🤑 {notification.Name} found {notification.Count} block{plural}!";
+                break;
+			default:
+				subject = $"{notification.Name} unknown notification {notification.Count}X";
+				message = $"{notification.Type} {notification.Count}X";
+				break;
+		}
+		Console.WriteLine($"Sending notification ({notification.Count}X-{notification.Name}-{notification.Type}) to {notification.User}");
+
+		var email = new MailMessage
+		{
+			Subject = subject,
+			Body = message,
+			From = new MailAddress(_emailCredentials.UserName, "FarmStation")
+		};
+		email.To.Add(new MailAddress(notification.User!));
+		await smtpClient.SendMailAsync(email);
+	}
+
 
     private async Task SendNotificationAsync(Notification notification)
     {
-        var smtpClient = new SmtpClient("smtp.gmail.com")
-        {
-            Port = 587,
-            EnableSsl = true,
-            Credentials = _emailCredentials 
-        };
+        SmtpClient smtpClient = GetSmtpClient();
         string subject, message;
 
         switch (notification.Type)
@@ -99,12 +165,21 @@ public class NotificationSender
         {
             Subject = subject,
             Body = message,
-            From = new MailAddress("josea.system@gmail.com", "FarmStation")            
+            From = new MailAddress(_emailCredentials.UserName, "FarmStation")
         };
-        email.To.Add(new MailAddress(notification.User));
+        email.To.Add(new MailAddress(notification.User!));
         await smtpClient.SendMailAsync(email);
     }
 
+    private SmtpClient GetSmtpClient()
+    {
+        return new SmtpClient("smtp.gmail.com")
+        {
+            Port = 587,
+            EnableSsl = true,
+            Credentials = _emailCredentials
+        };
+    }
 
 
 }
