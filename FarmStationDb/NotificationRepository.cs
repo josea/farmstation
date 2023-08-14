@@ -29,7 +29,8 @@ public class NotificationRepository
     {
         using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
-        dbContext.Notifications.Remove(notification);
+        //dbContext.Notifications.Remove(notification);
+        dbContext.Remove(notification);
 
         await dbContext.SaveChangesAsync();
     }
