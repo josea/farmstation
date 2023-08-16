@@ -33,7 +33,8 @@ public class NotificationRepository
         Console.WriteLine($"Removing notification ({notification.NotificationId}): {notification.Type}-{notification.Name}] => {notification.User}");
         dbContext.Remove(notification);
 
-        await dbContext.SaveChangesAsync();
+        var result = await dbContext.SaveChangesAsync();
+        Console.WriteLine($"Removing notification result: {result}");
     }
 
     public async Task AddNotificationAsync(Notification notification)
