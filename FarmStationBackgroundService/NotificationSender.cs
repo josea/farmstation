@@ -64,10 +64,10 @@ public class NotificationSender
 			await SendGroupNotificationAsync(gNotification);
 			await Task.Delay(2000); // avoding getting blocked
 
-            notifications
-                .Where( n=> n.User == gNotification.User && n.Type == gNotification.Type && n.Name == gNotification.Name)
-                .ToList()
-                .ForEach( async notification =>await _notificationRepository.RemoveNotification(notification));
+            foreach (var notification in notifications.Where(n => n.User == gNotification.User && n.Type == gNotification.Type && n.Name == gNotification.Name))
+            {				
+                await _notificationRepository.RemoveNotification(notification);
+            }
 			sentNotifications = true;
 		}
 
