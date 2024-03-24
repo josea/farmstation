@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Net;
+using static System.Formats.Asn1.AsnWriter;
+using System.Reflection.Metadata;
 
 public class Program
 {
@@ -61,6 +63,6 @@ public class Program
        .SetBasePath(Directory.GetCurrentDirectory())
        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? ""}.json", reloadOnChange: true, optional: true)
-       .AddEnvironmentVariables(prefix: "farmstation_")
-       .Build();
+       .AddEnvironmentVariables(prefix: "farmstation_")  // Where to find in AWS Console: AWS Systems Manager \ Parameter Store
+	   .Build();
 }

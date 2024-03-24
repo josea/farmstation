@@ -26,7 +26,7 @@ public class CheckOfflineClients
 
     public async Task CheckClientsAsync()
     {
-        var farms = (await _farmerRepository.GetFarmsNotUpdatedSinceDataAsync(DateTime.UtcNow.AddMinutes(-30)))
+        var farms = (await _farmerRepository.GetFarmsNotUpdatedSinceDataAsync(DateTime.UtcNow.AddMinutes(-120)))
             .Where(f => f.User != "none");
             //.Where(f => f.User == "josearaujof@gmail.com");
 
@@ -38,7 +38,8 @@ public class CheckOfflineClients
         {
             Console.WriteLine($"Found offline farm: {farm.Id}. (last updated {farm.LastUpdated}");
             await _statusesRepository.SetFarmStatusAsync(farm.Id, 2);
-            if (!farm.LastStatusNotificationTimestamp.HasValue || ( (DateTime.UtcNow - farm.LastStatusNotificationTimestamp.Value).TotalDays > 1
+            if (!farm.LastStatusNotificationTimestamp.HasValue || ( 
+                (DateTime.UtcNow - farm.LastStatusNotificationTimestamp.Value).TotalDays > 1
                 && ((int)(DateTime.UtcNow - farm.LastStatusNotificationTimestamp.Value).TotalDays) % 3 == 0)
 				)
             {
