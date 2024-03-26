@@ -16,6 +16,8 @@ public partial class Farm
 	[ConcurrencyCheck]	
 	public DateTime LastUpdated { get; set; }
 
+	public DateTime? LastFarming { get; set; }
+
 	public bool NotifyWhenOffline { get; set; }
 	public bool? PublicApi { get; set; }
 

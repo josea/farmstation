@@ -85,13 +85,15 @@ public class FarmerRepository
             ); 
     }
 
-    public async Task<List<Farm>> GetFarmsNotUpdatedSinceDataAsync(DateTime dateTimeUtc, bool includeOnlyFarmsEnabledForOfflineNotification = true)
+    public async Task<List<Farm>> GetFarmsNotFarmingOrUpdatedSinceDateAsync(DateTime dateTimeUtc, bool includeOnlyFarmsEnabledForOfflineNotification = true)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
         var farmData = await dbContext.Farms
-            .Where(f => f.LastUpdated < dateTimeUtc
-            && (!includeOnlyFarmsEnabledForOfflineNotification || f.NotifyWhenOffline))
+            .Where(f => 
+                (f.LastUpdated < dateTimeUtc && (!includeOnlyFarmsEnabledForOfflineNotification || f.NotifyWhenOffline))
+                || ((f.LastFarming ?? f.LastUpdated ) < dateTimeUtc)
+                )
             .ToListAsync();
 
         return farmData;

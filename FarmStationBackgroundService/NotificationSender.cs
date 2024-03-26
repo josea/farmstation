@@ -1,14 +1,8 @@
 ﻿using FarmStation.Models.Db;
 using FarmStationDb;
 using FarmStationDb.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace FarmStationMessager;
 
@@ -39,12 +33,12 @@ public class NotificationSender
         foreach (var notification in notifications.Where( n => n.Type != "block" || n.Name?.ToLower() == "xch") )
         {
             await SendNotificationAsync(notification);
-            await Task.Delay(2000); // avoding getting blocked
+            await Task.Delay(2000); // avoiding getting blocked
             await _notificationRepository.RemoveNotification(notification);
 			sentNotifications = true; 
 		}
 
-		var cutoffCooldownBlockNotifications = DateTime.UtcNow.AddDays(-1); // groups block notifications for minor currencies by 24 hours
+		var cutoffCooldownBlockNotifications = DateTime.UtcNow.AddDays(-3); // groups block notifications for minor currencies by 24 hours
 
         var gNotifications = notifications
            .Where(n => n.Type == "block" && n.Name?.ToLower() != "xch")
@@ -62,7 +56,7 @@ public class NotificationSender
         foreach (var gNotification in gNotifications.Where(gn => gn.MinTimeStamp < cutoffCooldownBlockNotifications))
         {
 			await SendGroupNotificationAsync(gNotification);
-			await Task.Delay(2000); // avoding getting blocked
+			await Task.Delay(2000); // avoiding getting blocked
 
             foreach (var notification in notifications.Where(n => n.User == gNotification.User && n.Type == gNotification.Type && n.Name == gNotification.Name))
             {				

@@ -8,4 +8,6 @@ public partial class Status
 	public string Id { get; set; } = null!;
 
     public int? Isfarming { get; set; }
+
+	public DateTime? LastUpdated { get; set; }
 }

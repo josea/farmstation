@@ -26,7 +26,7 @@ public class CheckOfflineClients
 
     public async Task CheckClientsAsync()
     {
-        var farms = (await _farmerRepository.GetFarmsNotUpdatedSinceDataAsync(DateTime.UtcNow.AddMinutes(-120)))
+        var farms = (await _farmerRepository.GetFarmsNotFarmingOrUpdatedSinceDateAsync(DateTime.UtcNow.AddMinutes(-120)))
             .Where(f => f.User != "none");
             //.Where(f => f.User == "josearaujof@gmail.com");
 

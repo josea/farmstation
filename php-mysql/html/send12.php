@@ -252,19 +252,26 @@ if (isset($_POST['id']) && isset($_POST['data'])) {
                  $commandJoseA1 = "UPDATE farms SET farmingstatus = '" . $isFarmingText . "', farmingstatustimestamp = now() WHERE id='" . $id . "' and farmingstatus <> '" . $isFarmingText . "';";
                  $conn->query($commandJoseA1);
 
+                 if ($isFarming === 1){
+                     $commandJoseA1 = "UPDATE farms SET lastfarming = now() WHERE id='" . $id . "' ;";
+                     $conn->query($commandJoseA1);
+                 }
+
                 //If there doesnt exist an entry with last isfarming
                 if (!$existsEntry) {
-                    $command5 = " INSERT INTO statuses (id, isfarming) VALUES ('" . $id . "','" . $isFarming . "');";
-                    $conn->query($command5);
-                   
+                    $command5 = " INSERT INTO statuses (id, isfarming, lastupdated) VALUES ('" . $id . "','" . $isFarming . "', now());";
+                    $conn->query($command5);                   
                 }
                 //If there is an entry with last plot and its different from previous registered plot id then update it and notify user
                 else if (($isFarming !== $previousValue) && (gettype($isFarming) === gettype($previousValue))) {
-                    $command5 = " UPDATE statuses set isfarming='" . $isFarming . "' WHERE id='" . $id . "';";
+                    $command5 = " UPDATE statuses set isfarming='" . $isFarming . "', lastupdated = now() WHERE id='" . $id . "';";
                     $conn->query($command5);
 
+                    // removed this as it was showing generating many errors in the email notifications
+                    // probably handle this in the background service.
+
                     //send notification if client was previously farming but now its not
-                    if ($previousValue === 1 && $isFarming === 0) {
+                   /* if ($previousValue === 1 && $isFarming === 0) {
                         $arg = "stopped";
                         //send notification
                         $commandNotif = " INSERT INTO notifications(user,type,name) VALUES ('" . $user . "', '" . $arg . "', '" . $name . "');";
@@ -283,7 +290,7 @@ if (isset($_POST['id']) && isset($_POST['data'])) {
                         //send notification
                         $commandNotif = " INSERT INTO notifications(user,type,name) VALUES ('" . $user . "', '" . $arg . "', '" . $name . "');";
                         $conn->query($commandNotif);
-                    }
+                    }*/
                 }
             }
         }
