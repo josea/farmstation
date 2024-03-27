@@ -53,6 +53,7 @@ public class Program
 
 		var offlineChecker = services.GetRequiredService<CheckOfflineClients>();
 		await offlineChecker.CheckClientsAsync();
+        await offlineChecker.CheckFarmsChangedStatusAsync();
 
 		var sender = services.GetRequiredService<NotificationSender>();
         await sender.SendNotificationsAsync();       

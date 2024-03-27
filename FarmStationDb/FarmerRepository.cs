@@ -80,6 +80,7 @@ public class FarmerRepository
             .ExecuteUpdateAsync(b => b
                 .SetProperty(f => f.FarmingStatus, farmingStatus)
                 .SetProperty(f => f.LastStatusNotificationTimestamp, LastOfflineNotification)
+                .SetProperty(f => f.LastNotificationFarmingStatus, farmingStatus) 
                 //.SetProperty(f => f.LastUpdated, DateTime.UtcNow)
                 .SetProperty(f => f.FarmingStatusTimestamp, DateTime.UtcNow)
             ); 
@@ -92,14 +93,26 @@ public class FarmerRepository
         var farmData = await dbContext.Farms
             .Where(f => 
                 (f.LastUpdated < dateTimeUtc && (!includeOnlyFarmsEnabledForOfflineNotification || f.NotifyWhenOffline))
-                || ((f.LastFarming ?? f.LastUpdated ) < dateTimeUtc)
+                || ((f.LastFarming ?? f.LastUpdated ) < dateTimeUtc)                
                 )
             .ToListAsync();
 
         return farmData;
     }
+	public async Task<List<Farm>> GetFarmsChangedStatusAsync(DateTime dateTimeUtc, bool includeOnlyFarmsEnabledForOfflineNotification = true)
+	{
+		using var dbContext = _dbContextFactory.CreateDbContext();
 
-    private static FarmData Deserialize(string id, string data, JsonSerializerOptions options)
+		var farmData = await dbContext.Farms
+			.Where(f =>
+				 (f.FarmingStatus != f.LastNotificationFarmingStatus)
+				)
+			.ToListAsync();
+
+		return farmData;
+	}
+
+	private static FarmData Deserialize(string id, string data, JsonSerializerOptions options)
     {
         var farmData = JsonSerializer.Deserialize<FarmData>(data, options)!;
         farmData.Id = id;

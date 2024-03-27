@@ -9,6 +9,10 @@ public partial class Farm
 
 	[MaxLength(10)]
 	public string FarmingStatus { get; set; } = string.Empty;
+
+	[MaxLength(10)]
+	public string LastNotificationFarmingStatus { get; set; } = string.Empty;
+
 	public DateTime? FarmingStatusTimestamp { get; set; }
 	public string Id { get; set; } = null!;
 	public DateTime? LastStatusNotificationTimestamp { get; set; }

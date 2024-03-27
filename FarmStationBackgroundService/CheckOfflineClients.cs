@@ -36,7 +36,7 @@ public class CheckOfflineClients
         
         foreach (var farm in farms)
         {
-            Console.WriteLine($"Found offline farm: {farm.Id}. (last updated {farm.LastUpdated}");
+            Console.WriteLine($"Found offline farm: {farm.Id}. (last updated {farm.LastUpdated})");
             await _statusesRepository.SetFarmStatusAsync(farm.Id, 2);
             if (!farm.LastStatusNotificationTimestamp.HasValue || ( 
                 (DateTime.UtcNow - farm.LastStatusNotificationTimestamp.Value).TotalDays > 1
@@ -57,5 +57,45 @@ public class CheckOfflineClients
             }
         }
     }
+	public async Task CheckFarmsChangedStatusAsync()
+	{
+		var farms = (await _farmerRepository.GetFarmsChangedStatusAsync(DateTime.UtcNow.AddMinutes(-120)))
+			.Where(f => f.User != "none");
+		//.Where(f => f.User == "josearaujof@gmail.com");
+
+		if (!farms.Any())
+		{
+			Console.WriteLine($"No farms with changed status!");
+		}
+
+		foreach (var farm in farms)
+		{
+			Console.WriteLine($"Found changed status farm: {farm.Id} - {farm.LastNotificationFarmingStatus} => {farm.FarmingStatus}. (last updated {farm.LastUpdated})");
+
+            string notType = "";
+            switch(farm.FarmingStatus)
+            {
+                case "FARMING": notType ="started";
+                    break;
+                case "OFFLINE": notType = "offline";
+                    break;
+                default:
+                    notType = "stopped";
+                    break;
+			}
+
+			var notification = new Notification
+			{
+				User = farm.User,
+				Type = notType,
+				Name = farm.Id
+			};
+			await _notificationRepository.AddNotificationAsync(notification);
+			//farm.LastOfflineNotification = DateTime.UtcNow;
+			//farm.FarmingStatus = "OFFLINE";
+			//await _farmerRepository.UpdateFarmAsync(farm); 
+			await _farmerRepository.UpdateFarmStatusAsync(farm.Id, farm.FarmingStatus, DateTime.UtcNow);
+		}
+	}
 
 }
