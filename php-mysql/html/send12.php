@@ -25,7 +25,7 @@ if (isset($_POST['id']) && isset($_POST['data'])) {
 
         $name = $conn->real_escape_string($_POST['name']);
 
-        $command = " UPDATE farms SET publicAPI=" . $publicAPI . ", data='" . $data . "', lastUpdated = now() WHERE id='" . $id . "' AND user<>'none' AND lastUpdated < DATE_SUB(NOW(), INTERVAL 1 MINUTE) LIMIT 1;";
+        $command = " UPDATE farms SET publicAPI=" . $publicAPI . ", data='" . $data . "', lastUpdated = utc_timestamp() WHERE id='" . $id . "' AND user<>'none' AND lastUpdated < DATE_SUB(utc_timestamp(), INTERVAL 1 MINUTE) LIMIT 1;";
         $result = $conn->query($command);
 
         // $f = fopen("log.txt", "w");
@@ -249,22 +249,22 @@ if (isset($_POST['id']) && isset($_POST['data'])) {
 
                 $command5 = "";
 
-                 $commandJoseA1 = "UPDATE farms SET farmingstatus = '" . $isFarmingText . "', farmingstatustimestamp = now() WHERE id='" . $id . "' and farmingstatus <> '" . $isFarmingText . "';";
+                 $commandJoseA1 = "UPDATE farms SET farmingstatus = '" . $isFarmingText . "', farmingstatustimestamp = utc_timestamp() WHERE id='" . $id . "' and farmingstatus <> '" . $isFarmingText . "';";
                  $conn->query($commandJoseA1);
 
                  if ($isFarming === 1){
-                     $commandJoseA1 = "UPDATE farms SET lastfarming = now() WHERE id='" . $id . "' ;";
+                     $commandJoseA1 = "UPDATE farms SET lastfarming = utc_timestamp() WHERE id='" . $id . "' ;";
                      $conn->query($commandJoseA1);
                  }
 
                 //If there doesnt exist an entry with last isfarming
                 if (!$existsEntry) {
-                    $command5 = " INSERT INTO statuses (id, isfarming, lastupdated) VALUES ('" . $id . "','" . $isFarming . "', now());";
+                    $command5 = " INSERT INTO statuses (id, isfarming, lastupdated) VALUES ('" . $id . "','" . $isFarming . "', utc_timestamp());";
                     $conn->query($command5);                   
                 }
                 //If there is an entry with last plot and its different from previous registered plot id then update it and notify user
                 else if (($isFarming !== $previousValue) && (gettype($isFarming) === gettype($previousValue))) {
-                    $command5 = " UPDATE statuses set isfarming='" . $isFarming . "', lastupdated = now() WHERE id='" . $id . "';";
+                    $command5 = " UPDATE statuses set isfarming='" . $isFarming . "', lastupdated = utc_timestamp() WHERE id='" . $id . "';";
                     $conn->query($command5);
 
                     // removed this as it was showing generating many errors in the email notifications
